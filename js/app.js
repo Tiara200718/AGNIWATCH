@@ -7,8 +7,8 @@
   "use strict";
 
   // API Endpoints
-  const API_FIRES = "http://127.0.0.1:5000/api/fires";
-  const API_HEALTH = "http://127.0.0.1:5000/api/health";
+  const API_FIRES = "https://agniwatch.onrender.com/api/fires";
+  const API_HEALTH = "https://agniwatch.onrender.com/api/health";
 
   // State
   let rawFires = [];
@@ -96,9 +96,10 @@
           statusPill.className = "status-pill online";
         }
         if (statusText) {
-          statusText.textContent = data.api_key_configured
-            ? "NASA FIRMS ONLINE (KEY VERIFIED)"
-            : "BACKEND ONLINE (KEY MISSING)";
+          statusText.textContent =
+            data.status === "running" || data.api_key_configured
+              ? "AGNIWATCH GLOBAL API ONLINE"
+              : "BACKEND ONLINE";
         }
         if (warningBanner) warningBanner.style.display = "none";
         return true;
