@@ -19,14 +19,27 @@ By combining satellite data, interactive 3D Earth visualization, and analytical 
 ## 📸 Project Screenshots
 
 ### Main Dashboard
-![AGNIWATCH Dashboard](screenshots/dashboard.png)
+![AGNIWATCH Dashboard]
+<img width="1914" height="982" alt="image" src="https://github.com/user-attachments/assets/caa2ae26-af66-4d4d-90c8-badde81bd39d" />
 
 ### Interactive 3D Earth
-![AGNIWATCH 3D Globe](screenshots/globe.png)
+![AGNIWATCH 3D Globe]
+<img width="1118" height="753" alt="image" src="https://github.com/user-attachments/assets/739a8b44-c4a5-47b2-b094-060430f58ea5" />
 
 ### Fire Analytics
-![AGNIWATCH Analytics](screenshots/analytics.png)
+![AGNIWATCH Analytics]
+<img width="738" height="700" alt="nasa" src="https://github.com/user-attachments/assets/3634d02b-f24e-4be2-b3af-34a18f7c83aa" />
 
+## 🌐 Live Application
+
+🚀 **Explore AGNIWATCH:**  
+https://agniwatch-1.onrender.com
+
+🔗 **Backend API:**  
+https://agniwatch.onrender.com
+
+💻 **GitHub Repository:**  
+https://github.com/Tiara200718/AGNIWATCH
 ## 🛠️ Technologies Used
 
 | Technology | Purpose |
