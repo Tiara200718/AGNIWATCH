@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="AGNIWATCH — Futuristic 3D Earth Intelligence Command Center for NASA FIRMS wildfire and thermal anomaly observations." />
+  <title>AGNIWATCH // 3D Earth Intelligence Command Center</title>
+
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Vendor Libraries (Local with CDN fallbacks) -->
+  <script src="js/vendor/three.min.js"></script>
+  <script>
+    if (typeof THREE === "undefined") {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+    }
+  </script>
+  <script src="js/vendor/OrbitControls.js"></script>
+  <script>
+    if (typeof THREE.OrbitControls === "undefined") {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\/script>');
+    }
+  </script>
+  <script src="js/vendor/chart.umd.min.js"></script>
+  <script>
+    if (typeof Chart === "undefined") {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>');
+    }
+  </script>
+</head>
+
+<body class="mission-control">
+
+  <!-- Background Space Canvas / Cyber Grid Overlay -->
+  <div class="space-backdrop">
+    <div class="cyber-grid"></div>
+    <div class="nebula-glow"></div>
+  </div>
+
+  <!-- Backend Offline Connection Warning Banner -->
+  <div id="backend-warning-banner" class="warning-banner" style="display: none;">
+    <div class="warning-content">
+      <span class="warning-icon">⚠</span>
+      <div class="warning-text">
+        <strong>NASA FIRMS FEED DISCONNECTED:</strong>
+        <span id="warning-message">Flask backend is not reachable at
+          <code>http://127.0.0.1:5000/api/fires</code>.</span>
+      </div>
+      <div class="warning-instructions">
+        <span>To start backend: <code>python backend/app.py</code></span>
+        <button id="retry-connection-btn" class="hud-btn primary small">RETRY SYNC ↺</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Command Center Shell -->
+  <div class="command-shell">
+
+    <!-- Top Command Header -->
+    <header class="topbar-command">
+      <div class="brand-cluster">
+        <div class="brand-radar-icon">
+          <div class="radar-sweep"></div>
+          <span class="radar-dot"></span>
+        </div>
+        <div class="brand-meta">
+          <div class="brand-name">
+            <span class="brand-highlight">AGNI</span>WATCH
+            <span class="version-tag">v3.0 // 3D HUD</span>
+          </div>
+          <div class="brand-desc">GLOBAL WILDFIRE &amp; SATELLITE INTELLIGENCE SYSTEM</div>
+        </div>
+      </div>
+
+      <!-- Center Status / Constellation Feeds -->
+      <div class="constellation-bar">
+        <div class="constellation-tag"><span class="sat-dot terra"></span> TERRA (MODIS)</div>
+        <div class="constellation-tag"><span class="sat-dot aqua"></span> AQUA (MODIS)</div>
+        <div class="constellation-tag"><span class="sat-dot snpp"></span> SUOMI-NPP (VIIRS)</div>
+        <div class="constellation-tag"><span class="sat-dot noaa20"></span> NOAA-20 (VIIRS)</div>
+        <div class="constellation-tag"><span class="sat-dot noaa21"></span> NOAA-21 (VIIRS)</div>
+      </div>
+
+      <!-- Right Mission Clock & Actions -->
+      <div class="top-meta-actions">
+        <div id="connection-status" class="status-pill checking">
+          <span class="status-pulse"></span>
+          <span id="connection-status-text">INITIALIZING TELEMETRY...</span>
+        </div>
+        <div class="clock-display">
+          <span class="clock-icon">⏱</span>
+          <span id="utc-clock">----/--/-- --:--:-- UTC</span>
+        </div>
+        <button id="refresh-btn" class="hud-btn refresh-btn" title="Refresh NASA FIRMS Live Telemetry">
+          <span class="btn-spinner">↻</span>
+          <span class="btn-label">SYNC DATA</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Viewport Area: Left Panel, Center 3D Globe, Right Inspector -->
+    <div class="center-stage">
+
+      <!-- LEFT PANEL: Telemetry Counters & Filters -->
+      <aside class="left-panel hud-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="hud-corner top-left"></span>
+            <span class="hud-corner top-right"></span>
+            <span class="panel-icon">◫</span>
+            <h3>MISSION TELEMETRY</h3>
+          </div>
+          <span class="panel-badge" id="last-sync-time">LIVE NRT</span>
+        </div>
+
+        <div class="panel-scroll-content">
+          <!-- Summary Metrics Cards -->
+          <div class="metrics-stack">
+            <div class="metric-card primary">
+              <div class="metric-header">
+                <span>TOTAL HOTSPOTS</span>
+                <span class="metric-hud-tag">NASA FIRMS</span>
+              </div>
+              <div class="metric-body">
+                <span id="metric-total" class="metric-value">0</span>
+                <span class="metric-sub">Thermal Detections</span>
+              </div>
+            </div>
+
+            <div class="metrics-split">
+              <div class="metric-card modis-card">
+                <div class="metric-header">
+                  <span>MODIS</span>
+                  <span class="sensor-badge-small modis">1 KM</span>
+                </div>
+                <div class="metric-body">
+                  <span id="metric-modis" class="metric-value">0</span>
+                  <span class="metric-sub">Terra / Aqua</span>
+                </div>
+              </div>
+              <div class="metric-card viirs-card">
+                <div class="metric-header">
+                  <span>VIIRS</span>
+                  <span class="sensor-badge-small viirs">375 M</span>
+                </div>
+                <div class="metric-body">
+                  <span id="metric-viirs" class="metric-value">0</span>
+                  <span class="metric-sub">NPP / NOAA</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="metrics-split">
+              <div class="metric-card">
+                <div class="metric-header">
+                  <span>PEAK FRP</span>
+                  <span class="metric-hud-tag">MAX MW</span>
+                </div>
+                <div class="metric-body">
+                  <span id="metric-peak-frp" class="metric-value">0.0 MW</span>
+                  <span class="metric-sub">Radiative Power</span>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-header">
+                  <span>AVG FRP</span>
+                  <span class="metric-hud-tag">MEAN</span>
+                </div>
+                <div class="metric-body">
+                  <span id="metric-avg-frp" class="metric-value">0.0 MW</span>
+                  <span class="metric-sub">Thermal Energy</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Geographic Coverage Card -->
+          <div class="hud-subpanel coverage-subpanel">
+            <div class="subpanel-header">
+              <span>GEOGRAPHIC SECTOR</span>
+              <span class="coverage-active-tag">NRT ACTIVE</span>
+            </div>
+            <div class="coverage-grid">
+              <div class="coverage-item">
+                <span class="cov-label">REGION</span>
+                <strong class="cov-val">Global Coverage</strong>
+              </div>
+              <div class="coverage-item">
+                <span class="cov-label">BBOX</span>
+                <strong class="cov-val">180°W – 180°E | 90°S – 90°N</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sensor & Time Filters -->
+          <div class="hud-subpanel filters-subpanel">
+            <div class="subpanel-header">
+              <span>INTELLIGENCE FILTERS</span>
+              <button id="reset-filters-btn" class="hud-link-btn">RESET ↺</button>
+            </div>
+
+            <div class="filter-group">
+              <label for="sensor-filter">SATELLITE SENSOR</label>
+              <select id="sensor-filter" class="hud-select">
+                <option value="ALL">ALL SENSORS (MODIS + VIIRS)</option>
+                <option value="MODIS">MODIS ONLY (Terra &amp; Aqua)</option>
+                <option value="VIIRS">VIIRS ONLY (Suomi-NPP &amp; NOAA)</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label for="time-filter">ACQUISITION WINDOW</label>
+              <select id="time-filter" class="hud-select">
+                <option value="ALL">ALL AVAILABLE OBSERVATIONS</option>
+                <option value="TODAY">TODAY (LAST 24 HOURS)</option>
+                <option value="7D">PAST 7 DAYS</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <div class="slider-header">
+                <label for="frp-slider">MIN FIRE RADIATIVE POWER (FRP)</label>
+                <span id="frp-val" class="slider-val">0 MW</span>
+              </div>
+              <input type="range" id="frp-slider" class="hud-slider" min="0" max="60" step="5" value="0">
+            </div>
+          </div>
+
+          <!-- 3D Globe Visual Controls -->
+          <div class="hud-subpanel visual-controls-subpanel">
+            <div class="subpanel-header">
+              <span>3D GLOBE CONTROLS</span>
+            </div>
+            <div class="visual-buttons-grid">
+              <button id="btn-toggle-rotate" class="hud-toggle-btn active" title="Toggle automatic Earth rotation">
+                <span>⟳</span> AUTO-ROTATE
+              </button>
+              <button id="btn-toggle-clouds" class="hud-toggle-btn active" title="Toggle Earth cloud atmosphere layer">
+                <span>☁</span> CLOUDS
+              </button>
+              <button id="btn-toggle-orbits" class="hud-toggle-btn active" title="Toggle satellite orbits">
+                <span>🛰</span> ORBITS
+              </button>
+              <button id="btn-focus-india" class="hud-toggle-btn" title="Focus camera view on India sector">
+                <span>🎯</span> FOCUS INDIA
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTER: Interactive 3D Earth Globe Viewport -->
+      <main class="center-globe-container">
+        <!-- Three.js Canvas Container -->
+        <div id="globe-viewport" class="globe-viewport"></div>
+
+        <!-- Overlaid HUD Information Overlays -->
+        <div class="globe-hud-overlay top-left-overlay">
+          <div class="hud-telemetry-tag">
+            <span class="hud-blip"></span>
+            <span>NASA FIRMS EARTH OBSERVATION TELEMETRY</span>
+          </div>
+          <div id="status-telemetry-text" class="hud-coords-readout">
+            TELEMETRY ACTIVE • 3D GLOBE INITIALIZED
+          </div>
+        </div>
+
+        <div class="globe-hud-overlay top-right-overlay">
+          <div class="legend-panel">
+            <div class="legend-item"><span class="legend-marker modis"></span> MODIS Hotspot (1km)</div>
+            <div class="legend-item"><span class="legend-marker viirs"></span> VIIRS Hotspot (375m)</div>
+            <div class="legend-item"><span class="legend-marker orbit-modis"></span> Terra/Aqua Orbit</div>
+            <div class="legend-item"><span class="legend-marker orbit-viirs"></span> Suomi/NOAA Orbit</div>
+          </div>
+        </div>
+
+        <!-- Globe Interaction HUD Toolbar -->
+        <div class="globe-hud-overlay bottom-toolbar-overlay">
+          <div class="globe-toolbar">
+            <button id="btn-zoom-in" class="toolbar-btn" title="Zoom In">+</button>
+            <button id="btn-zoom-out" class="toolbar-btn" title="Zoom Out">−</button>
+            <div class="toolbar-divider"></div>
+            <span class="toolbar-hint">🖱 Drag to rotate | Scroll to zoom | Click marker to inspect</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Hover Tooltip for Raycaster -->
+        <div id="globe-hud-tooltip" class="globe-hud-tooltip" style="display: none;"></div>
+      </main>
+
+      <!-- RIGHT PANEL: Selected Hotspot Telemetry & Hotspot Queue -->
+      <aside class="right-panel hud-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="hud-corner top-left"></span>
+            <span class="hud-corner top-right"></span>
+            <span class="panel-icon">◎</span>
+            <h3>TARGET INSPECTOR</h3>
+          </div>
+          <span class="panel-badge alert">HOTSPOT HUD</span>
+        </div>
+
+        <div class="panel-scroll-content">
+          <!-- Hotspot Detail State -->
+          <div id="inspector-content-state" class="inspector-card">
+            <div class="target-headline">
+              <span class="target-title">SATELLITE THERMAL DETECTION</span>
+              <span id="target-sensor" class="sensor-pill modis">MODIS</span>
+            </div>
+
+            <div class="target-telemetry-grid">
+              <div class="telemetry-cell full-width">
+                <span class="cell-label">COORDINATES (LAT / LON)</span>
+                <strong id="target-coords" class="cell-value large highlight">--.----° N, --.----° E</strong>
+              </div>
+
+              <div class="telemetry-cell">
+                <span class="cell-label">SATELLITE PLATFORM</span>
+                <strong id="target-satellite" class="cell-value">Terra</strong>
+              </div>
+
+              <div class="telemetry-cell">
+                <span class="cell-label">DETECTION CONFIDENCE</span>
+                <strong id="target-confidence" class="cell-value">--</strong>
+              </div>
+
+              <div class="telemetry-cell">
+                <span class="cell-label">FIRE RADIATIVE POWER</span>
+                <strong id="target-frp" class="cell-value energy">-- MW</strong>
+              </div>
+
+              <div class="telemetry-cell">
+                <span class="cell-label">DATA PRODUCT FEED</span>
+                <strong id="target-source" class="cell-value">MODIS_NRT</strong>
+              </div>
+
+              <div class="telemetry-cell full-width">
+                <span class="cell-label">OBSERVATION TIMESTAMP (UTC)</span>
+                <strong id="target-datetime" class="cell-value">----/--/-- --:-- UTC</strong>
+              </div>
+            </div>
+
+            <!-- FRP Thermal Intensity Meter -->
+            <div class="frp-meter-container">
+              <div class="meter-label">
+                <span>THERMAL INTENSITY SCALE (FRP)</span>
+                <span class="meter-legend">0MW &bull;&bull;&bull; 60+MW</span>
+              </div>
+              <div class="frp-gauge-track">
+                <div id="frp-gauge-fill" class="gauge-fill nominal" style="width: 20%;"></div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="target-actions">
+              <button id="btn-fly-to-target" class="hud-btn primary">🎯 FLY TO TARGET</button>
+              <button id="btn-copy-telemetry" class="hud-btn secondary">COPY TELEMETRY</button>
+            </div>
+          </div>
+
+          <!-- Empty State (No Target Selected) -->
+          <div id="inspector-empty-state" class="empty-inspector" style="display: none;">
+            <div class="empty-reticle">
+              <div class="reticle-ring"></div>
+              <span>⌖</span>
+            </div>
+            <h4>NO TARGET ACQUIRED</h4>
+            <p>Click any glowing hotspot marker on the 3D Earth or choose from the detection queue below.</p>
+          </div>
+
+          <!-- Hotspots Queue / Directory -->
+          <div class="hud-subpanel queue-subpanel">
+            <div class="subpanel-header">
+              <span>DETECTIONS DIRECTORY</span>
+              <span id="hotspot-list-count" class="queue-counter">0 DETECTIONS</span>
+            </div>
+            <div class="hotspot-list-table">
+              <div class="table-header">
+                <span class="th-sensor">SENSOR</span>
+                <span class="th-coords">COORDINATES</span>
+                <span class="th-frp">FRP</span>
+                <span class="th-action">LOCK</span>
+              </div>
+              <div id="hotspot-list-body" class="table-body">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- BOTTOM ANALYTICAL DECK: Charts, Timelines & Scientific Caveats -->
+    <section class="bottom-analytics-deck">
+      <div class="deck-header">
+        <div class="deck-tabs">
+          <button class="analytics-tab active" data-target="view-sensor-mix">
+            <span class="tab-indicator"></span> SENSOR ANALYSIS
+          </button>
+          <button class="analytics-tab" data-target="view-timeline">
+            <span class="tab-indicator"></span> OBSERVATION TIMELINE
+          </button>
+          <button class="analytics-tab" data-target="view-frp-dist">
+            <span class="tab-indicator"></span> THERMAL ENERGY (FRP)
+          </button>
+          <button class="analytics-tab" data-target="view-scientific-caveats">
+            <span class="tab-indicator alert"></span> SCIENTIFIC QUALITY &amp; CAVEATS
+          </button>
+        </div>
+        <div class="deck-telemetry-status">
+          <span>DATA ACCURACY: SATELLITE PIXEL THERMAL ANOMALIES</span>
+        </div>
+      </div>
+
+      <div class="deck-content">
+        <!-- TAB 1: Sensor Comparison -->
+        <div id="view-sensor-mix" class="analytics-view active">
+          <div class="chart-layout-split">
+            <div class="chart-box doughnut-box">
+              <canvas id="sensorMixChart"></canvas>
+            </div>
+            <div class="sensor-spec-box">
+              <h4>SENSOR SPECIFICATION &amp; RESOLUTION MATRIX</h4>
+              <div class="spec-grid">
+                <div class="spec-card modis-spec">
+                  <div class="spec-title">MODIS (Moderate Resolution Imaging Spectroradiometer)</div>
+                  <div class="spec-details">
+                    <div><strong>Platforms:</strong> Terra (10:30 AM/PM), Aqua (1:30 AM/PM)</div>
+                    <div><strong>Pixel Resolution:</strong> 1 km at nadir (expands at scan edge)</div>
+                    <div><strong>Bands:</strong> 4 µm and 11 µm brightness temperature channels</div>
+                    <div><strong>Confidence:</strong> Algorithmic probability score (0–100%)</div>
+                  </div>
+                </div>
+                <div class="spec-card viirs-spec">
+                  <div class="spec-title">VIIRS (Visible Infrared Imaging Radiometer Suite)</div>
+                  <div class="spec-details">
+                    <div><strong>Platforms:</strong> Suomi-NPP, NOAA-20, NOAA-21</div>
+                    <div><strong>Pixel Resolution:</strong> 375 m at nadir (higher spatial fidelity)</div>
+                    <div><strong>Bands:</strong> I-Band (I4: 3.74 µm) &amp; M-Band thermal channels</div>
+                    <div><strong>Confidence:</strong> Categorical (low, nominal, high)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Activity Timeline -->
+        <div id="view-timeline" class="analytics-view">
+          <div class="chart-box full-chart-box">
+            <canvas id="activityTimelineChart"></canvas>
+          </div>
+        </div>
+
+        <!-- TAB 3: FRP Energy Distribution -->
+        <div id="view-frp-dist" class="analytics-view">
+          <div class="chart-box full-chart-box">
+            <canvas id="frpDistChart"></canvas>
+          </div>
+        </div>
+
+        <!-- TAB 4: Scientific Limitations & Quality Standards -->
+        <div id="view-scientific-caveats" class="analytics-view">
+          <div class="caveats-grid">
+            <div class="caveat-card important">
+              <h5>⚠ THERMAL ANOMALY vs GROUND FIRE PERIMETER</h5>
+              <p>Hotspots detected by NASA FIRMS indicate elevated radiance at sensor pixel scale (1 km for MODIS, 375 m
+                for VIIRS). They are <strong>thermal anomalies</strong>, not surveyed ground fire perimeters or burn
+                scars.</p>
+            </div>
+            <div class="caveat-card">
+              <h5>◎ SENSOR HARMONIZATION STATUS</h5>
+              <p>MODIS and VIIRS have different spatial resolutions, swath geometries, saturation thresholds, and
+                overpass schedules. Simply merging observation counts does not constitute scientific harmonization.
+                Cross-sensor comparison requires spatial resampling and temporal normalization.</p>
+            </div>
+            <div class="caveat-card">
+              <h5>☁ CLOUD &amp; CANOPY OBSCURATION</h5>
+              <p>Heavy clouds, thick convective smoke, or dense forest canopies can mask thermal signatures, preventing
+                orbital detection. Absence of detections does not verify absence of ground burning.</p>
+            </div>
+            <div class="caveat-card caution">
+              <h5>🛡 NOT FOR EMERGENCY RESPONSE</h5>
+              <p>This intelligence dashboard is for scientific exploration, academic research, and situational
+                awareness. It must not be relied upon for life-safety tactical evacuation or emergency management
+                decisions.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Application Logic -->
+  <script src="js/globe.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
